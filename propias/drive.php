@@ -1,4 +1,5 @@
 <?php
+
 require 'vendor/autoload.php';
 
 /*
@@ -121,5 +122,103 @@ function get_firstColumnWithDate($fila_inicial, $max_columna, $cellsheet){
 	}
 	return $columna_actual;
 }	
+
+
+/*
+Función para buscar la primer columna con la palabra "Centro de Costos"
+@IN integer con la fila donde se buscara la columna
+	intenger numero maximo de columnas para buscar	
+	cellsheetFeed todo lo que viene del api de DRIVE con el contenido de las celdas en la hoja
+@OUT integer con el numero de la fila donde encontro el primer valor
+*/
+function get_firstColumnCentroCosto($fila_inicial,$columna_fecha,$cellsheet){
+	$columna_actual=0;
+	$flag_busqueda=1;
+	do{
+		$columna_actual++;
+		$celda_temporal = $cellsheet->getCell($fila_inicial,$columna_actual);
+		if($celda_temporal){
+			$contenido_celda = $celda_temporal->getContent();
+			$posicion = strpos(strtoupper($contenido_celda), 'CENTRO DE COSTOS');
+			if($posicion !== false){
+				$flag_busqueda=0;
+			}
+		}
+	}while($flag_busqueda && $columna_actual < $columna_fecha);
+	if($columna_actual == $columna_fecha){
+		return 0;
+	}
+	return $columna_actual;
+}
+
+/*
+Función para buscar la primer columna con la palabra "Descripcion" sin acentos
+@IN integer con la fila donde se buscara la columna
+	intenger numero maximo de columnas para buscar	
+	cellsheetFeed todo lo que viene del api de DRIVE con el contenido de las celdas en la hoja
+@OUT integer con el numero de la fila donde encontro el primer valor
+*/
+
+function get_firstColumnDescripcion($fila_inicial,$columna_fecha,$cellsheet){
+	$columna_actual=0;
+	$flag_busqueda=1;
+	do{
+		$columna_actual++;
+		$celda_temporal = $cellsheet->getCell($fila_inicial,$columna_actual);
+		if($celda_temporal){
+			$contenido_celda = $celda_temporal->getContent();
+			//print_online($contenido_celda);
+			$posicion = strpos(strtoupper($contenido_celda), 'DESCRIPCION');
+			
+			if($posicion !== false){
+				$flag_busqueda=0;
+			}
+		}
+	}while($flag_busqueda && $columna_actual < $columna_fecha);
+	if($columna_actual == $columna_fecha){
+		return 0;
+	}
+	return $columna_actual;
+}
+
+
+/*
+Función para obtener el array con todos los encabezados de fechas encontrados 
+@IN integer con la fila donde se buscara la columna
+	intenger numero inicial de la fecha encontrada o donde comenzaremos a buscar
+	cellsheetFeed todo lo que viene del api de DRIVE con el contenido de las celdas en la hoja
+@OUT array con todos los valores de fechas en formato "d/m/Y"
+*/
+
+function get_arrayFechas($fila_inicial,$columna_fecha,$cellsheet){
+	$flag_tope_fecha=1;
+	$total_fechas=0;
+	$col_ini_fecha  = $columna_fecha;
+	$array_fechas=array();
+	do{
+		$celda_fecha = $cellsheet->getCell($fila_inicial,$col_ini_fecha);
+		//print_r($celda_fecha);
+		if($celda_fecha){
+			$contenido_celda =  $celda_fecha->getContent();
+			$posible_fecha = date_create_from_format('m/d/Y', $contenido_celda);
+			//Si no es una fecha en el formato establecido regresa nulo y por lo tanto descartamos la fila
+			if($posible_fecha){
+				$array_fechas[$col_ini_fecha] = date_format($posible_fecha, 'm/d/Y');
+				$total_fechas++;
+				$col_ini_fecha++;
+			}
+			else{
+				$flag_tope_fecha=0;
+			}
+		}
+		else{
+			$flag_tope_fecha=0;
+		}					
+		
+	}while($flag_tope_fecha);
+	
+	
+	return $array_fechas;
+}
   
 ?>

@@ -1,4 +1,7 @@
+<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
 <?php
+
+
 require 'vendor/autoload.php';
 require_once 'propias/drive.php';
 require_once 'propias/check_errores.php';
@@ -65,7 +68,7 @@ if (isset($_SESSION['access_token']) && $_SESSION['access_token']) {
 	//Banderas para los errores
 	$contador_errores=0;
 	
-	
+	$indice_letra='A';
 	foreach($archivos as $file){
 		print_online ("Leyendo el documento: ". $file['nombre']. "");
 		
@@ -98,171 +101,111 @@ if (isset($_SESSION['access_token']) && $_SESSION['access_token']) {
 				}
 				
 			}
-			//print_online("\t\t\tFila: ".$fila_inicial. " | Columna: ".$columna_fecha);
-			//Si es un posible presupuesto comienzo a sacar la info de la hoja y empiezo a armar el array final
 			if(!$flag_noes_presupuesto){
+				//Ahora busco la columna con el encabezado "Centro de Costos..."
+				$columna_centro_costo=get_firstColumnCentroCosto($fila_inicial,$columna_fecha,$cellsheet);
+				//Ahora busco la columna con el encabezado "Descripcion..."
+				$columna_descripcion=get_firstColumnDescripcion($fila_inicial,$columna_fecha,$cellsheet);
 				
 			}
 			
-			/*if($pestana!='resumen total' && $pestana!='Resumen' && $pestana!='Movi-Centro' && $pestana!='Presupuesto Sistemas' &&  $pestana!='Presupuesto comercial' && $pestana!='Presupuesto RH' && $pestana!='Presupuesto Administrativo' && $pestana!='Presupuesto Operativo' && $pestana!='Presupuesto Dirección'){
-				$worksheet = $worksheetFeed->getByTitle($pestana);
-				$cellsheet = $worksheet->getCellFeed();
+			//Si es un posible presupuesto comienzo a sacar la info de la hoja y empiezo a armar el array final
+			//Tengo los valores para $fila_inicial, $columna_centro_costo, $columna_fecha y con ellos comienzo a barrer todas las filas
+			if($fila_inicial != 0 && $columna_centro_costo !=0 && $columna_fecha != 0 && $columna_descripcion !=0){
+				//Contare el total de columnas con fechas a partir de la $columna_fecha hasta que exista que no tenga formato de fecha
+				//print_online("\t\t\t\tI: ".$fila_inicial . " | F: ". $columna_fecha." | C:".$columna_centro_costo. " | D: ".$columna_descripcion);
 				
-				//Saco la clave de la celda correspondiente
-				//TODO: Verificar si realmente siempre todos los presupuestos tienen el contenido en la Fila 6 Columna 2
-				$fila_inicial = 6;
-				$col_cppr = 2;
-				$col_des = 9;
-				
-				//Contare el total de columnas con fechas a partir de la U = 21 hasta que exista una celda vacia
-				$fila_fecha = 5;
-				$col_ini_fecha  = 21;
-				$flag_tope_fecha=1;
-				$total_fechas=0;
-				$array_fechas=array();
-				do{
-					$celda_fecha = $cellsheet->getCell($fila_fecha,$col_ini_fecha);
-					if($celda_fecha){
-						$array_fechas[$col_ini_fecha] = $celda_fecha->getContent();
-						$total_fechas++;
-					}
-					else{
-						$flag_tope_fecha=0;
-					}					
-					$col_ini_fecha++;
-				}while($flag_tope_fecha);
-				
-				//TODO: Comprobar que todos los valores sean fechas validas
+				$array_fechas = get_arrayFechas($fila_inicial,$columna_fecha,$cellsheet);
 				//print_r($array_fechas);
-				//print "<br/>";
 				
+				
+				//Comienzo con la extracción de datos
+				
+				$cont_filas = $fila_inicial+1;
 				do{
 					//Temporal con la cadena de PROYECTO/PRODUCTO/CUENTA/RUBRO
-					$celda_cppr = $cellsheet->getCell($fila_inicial,$col_cppr);
+					$celda_cppr = $cellsheet->getCell($cont_filas,$columna_centro_costo);
 					//Temporal con la descripción de la fila
-					$celda_descripcion = $cellsheet->getCell($fila_inicial,$col_des);
-				
+					$celda_descripcion = $cellsheet->getCell($cont_filas,$columna_descripcion);
+					
 					if($celda_cppr && $celda_descripcion){
 						$cppr = $celda_cppr->getContent(); 
 						$array_cppr = explode("/", $cppr);
-						$descripcion_value = $celda_descripcion->getContent();
+						$descripcion_value = sanear_string($celda_descripcion->getContent());
+						
 						foreach($array_fechas as $key_f => $fecha){
-							//Extraigo el datetime de la fecha extraida
+							//Extraigo el datetime de la fecha 
+							//print_online($fecha);
 							$date_fecha = date_create_from_format('m/d/Y', $fecha);
 							//Temporal con el monto usado en la fecha indicada
-							$celda_monto_fecha = $cellsheet->getCell($fila_inicial,(int)$key_f);
-							$monto_fecha = $celda_monto_fecha->getContent();
-							//TODO: Revisar que sea un flotante valido
+							//print_online($cont_filas .", ".$key_f);
+							$celda_monto_fecha = $cellsheet->getCell($cont_filas,(int)$key_f);
+							//Reviso si se creo por que si no se crea no contiene algún valor
+							$monto_fecha="";
+							if($celda_monto_fecha)
+								$monto_fecha = get_numeric($celda_monto_fecha->getContent());
+
 							
 							//Descarto los valores en 0 o similares
 							if($monto_fecha!="0" && $monto_fecha!="" && $monto_fecha!="0.00" && $monto_fecha!="FALSE" &&  $monto_fecha!="0,00"){
 								//Asigno los valores anteriores
+								//print_r($array_cppr);
 								$array_salida[$indice_general_salida]["type"]='BUDGET';
-								$array_salida[$indice_general_salida]["i"]='TT-'.$indice_general_salida; //TODO: Auto generarlos de momento dejo fijo
+								$array_salida[$indice_general_salida]["i"]=$indice_letra.'-'.$indice_general_salida; //Se auto generar usando desde la A en adelante
+								$array_salida[$indice_general_salida]["EMPLOYEE"]='';
+								$array_salida[$indice_general_salida]["Supplier"]='';
+								$array_salida[$indice_general_salida]["cuenta"]=$array_cppr[2];
 								$array_salida[$indice_general_salida]["proyecto"]=$array_cppr[0];
 								$array_salida[$indice_general_salida]["producto"]=$array_cppr[1];
-								$array_salida[$indice_general_salida]["cuenta"]=$array_cppr[2];
 								$array_salida[$indice_general_salida]["rubro"]=$array_cppr[3];
 								$array_salida[$indice_general_salida]["items"]=strtoupper($descripcion_value);
-								$array_salida[$indice_general_salida]["Gross amount"]=get_numeric($monto_fecha);
+								$array_salida[$indice_general_salida]["Currency"]='';
+								$array_salida[$indice_general_salida]["Net amount"]='';
+								$array_salida[$indice_general_salida]["Tax amount"]='';
+								$array_salida[$indice_general_salida]["Gross amount"]=$monto_fecha;
 								$array_salida[$indice_general_salida]["state"]='0-BUDGET';
-								$array_salida[$indice_general_salida]["date"]=date_format($date_fecha, 'd-m-Y');;
-								$array_salida[$indice_general_salida]["mes"]=strtolower(date_format($date_fecha, 'M-y'));
-								$array_salida[$indice_general_salida]["semana"]=date_format($date_fecha, 'W');
+								$array_salida[$indice_general_salida]["Asked at"]=(string)date_format($date_fecha, "d/m/Y");;
+								$array_salida[$indice_general_salida]["mes"]=(string)date_format($date_fecha, "m/Y");
+								$array_salida[$indice_general_salida]["semana"]=(string)date_format($date_fecha, "W-y");
 								$array_salida[$indice_general_salida]["notes"]='';
 								$array_salida[$indice_general_salida]["additional info"]='';
 								$array_salida[$indice_general_salida]["link to request"]='';
-								$array_salida[$indice_general_salida]["TYPE"]='';
-								$array_salida[$indice_general_salida]["State"]='';
-								$array_salida[$indice_general_salida]["ID"]='';
-								$array_salida[$indice_general_salida]["EMPLOYEE"]='';
-								$array_salida[$indice_general_salida]["Supplier"]='';
-								$array_salida[$indice_general_salida]["Items"]='';
-								$array_salida[$indice_general_salida]["Currency"]='MXN';
-								$array_salida[$indice_general_salida]["Net amount"]='';
-								$array_salida[$indice_general_salida]["Tax amount"]='';
-								$array_salida[$indice_general_salida]["Notes"]='';
-								$array_salida[$indice_general_salida]["Additional info"]='';
-								$array_salida[$indice_general_salida]["Link to the request"]='';
-							
+								
 								$indice_general_salida++;
 							}
 						}
 					}
-					$fila_inicial++;
+					$cont_filas++;
+					
 				}while($celda_cppr);
+				
 			}
-			*/
-		}
-	}
-	/*
-	foreach($array_salida as $array){
-		print_r($array);
-		print "<br/>";
-		print "<br/>";
-	}
-	*/
-	
-	
-	
-	
-	/*
-	$listFeed = $worksheet->getListFeed();
-	foreach ($listFeed->getEntries() as $entry) {
-				$values = $entry->getValues();
-				print_r($values);
+			
+			
+			/*
+			foreach($array_salida as $array){
+				print_r($array);
+				print "<br/>";
 				print "<br/>";
 			}
 			*/
-	
-	/*LISTADO DE TODO EL CONTENIDO
-	foreach($archivos as $file){
-		//Presento temporalmente el contenido
-		print "ID: ".$file['id']."<br/>";
-		print "Nombre: ".$file['nombre']."<br/>";
-		print "Tipo: ".$file['mime_type']."<br/>";
-		print "Descripción: ".$file['descripcion']."<br/>";
-		print "Pestanas: ";
-		
-		//Traigo el Spreed correspondiente al ID
-		$spreadsheetFeed = $spreadsheetService->getSpreadsheetById($file['id']); 	
-		//Ahora me quedo con toda la estructura
-		$worksheetFeed = $spreadsheetFeed->getWorksheets();
-		//Ahora traigo el nombre de todas las pestanas
-		$array_pestanas = $worksheetFeed->getAllTitle();
-		print_r($array_pestanas);
-		print "<br/>";
-		//Presento el contenido dentro de cada pestana
-		foreach($array_pestanas as $pestana){
-			print "PESTANA: ". $pestana."<br/>";
-			$worksheet = $worksheetFeed->getByTitle($pestana);
-			$listFeed = $worksheet->getListFeed();	
-			foreach ($listFeed->getEntries() as $entry) {
-				$values = $entry->getValues();
-				print_r($values);
-				print "<br/>";
-			}
-			print "<br/>";
+			
+			
+			
 		}
-		
-		print "<br/>";
-		print "<br/>";
+		$indice_letra++;
+		//Creo el csv de salida
+			$output = fopen('tmp_files/flatten.csv', 'w');
+
+			//Mando los encabezados
+			fputcsv($output, array('TYPE','ID','EMPLOYEE','Supplier','Cuenta','Proyecto','Producto','Rubro','Descripcion','Currency','Net amount','Tax amount','Gross amount','State','Asked at','Mes','Semana','Notes','Additional info','Link to the request'));
+			foreach($array_salida as $array){
+				fputcsv($output, $array);
+			}
+			
+			fclose($output);
+			print_online("TERMINADO..");
 	}
-	*/
-	
-	
-	
-	
-	/*
-	
-	$listFeed = $worksheet->getListFeed();
-	
-	foreach ($listFeed->getEntries() as $entry) {
-		$values = $entry->getValues();
-		print_r($values);
-	}
-	*/
-	
 	
 }
 //Si no tenemos el token lo vamos a pedir 
