@@ -4,8 +4,23 @@
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "64ff4415621356d8a8d4c606d5634da1",
+    "hash": "0b1584c120e79d2bf1d9909a090f5e81",
     "packages": [
+        {
+            "name": "PHPOffice/PHPExcel",
+            "version": "1.8.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PHPOffice/PHPExcel.git",
+                "reference": "1.8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-0": {
+                    "PHPExcel": "Classes/"
+                }
+            }
+        },
         {
             "name": "asimlqt/php-google-spreadsheet-client",
             "version": "2.3.3",

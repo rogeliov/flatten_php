@@ -98,5 +98,22 @@
         "keywords": [
             "google"
         ]
+    },
+    {
+        "name": "PHPOffice/PHPExcel",
+        "version": "1.8.0",
+        "version_normalized": "1.8.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/PHPOffice/PHPExcel.git",
+            "reference": "1.8.0"
+        },
+        "type": "library",
+        "installation-source": "source",
+        "autoload": {
+            "psr-0": {
+                "PHPExcel": "Classes/"
+            }
+        }
     }
 ]
